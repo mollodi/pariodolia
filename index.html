@@ -57,10 +57,11 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 header {
-  padding: 10px 16px;
+  padding: 8px 16px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -73,7 +74,7 @@ h1 { font-size: 1.15rem; margin: 0; font-weight: 650; letter-spacing: 0.01em; }
 .stage {
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 30vh;
   background: var(--stage);
   color: var(--stage-text);
   overflow: hidden;
@@ -141,12 +142,49 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .controls {
   background: var(--panel);
   border-top: 1px solid var(--line);
-  padding: 12px 12px 14px;
+  padding: 10px 10px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex: 0 0 auto;
 }
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 520px;
+}
+.filters button {
+  min-height: 34px;
+  padding: 4px 11px;
+  border-radius: 17px;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--line);
+  white-space: nowrap;
+}
+.filters button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  font-size: 0.9rem;
+}
+.strength label { white-space: nowrap; }
+.strength input { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); height: 30px; }
+.strength output { width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.strength.off { opacity: 0.45; }
 .toggles {
   display: flex;
   flex-wrap: wrap;
@@ -165,8 +203,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   background: transparent;
   color: var(--text);
   border: 2px solid transparent;
-  min-height: 40px;
-  padding: 6px 12px;
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: 0.9rem;
   white-space: nowrap;
 }
 .seg button[aria-pressed="true"] {
@@ -198,11 +237,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 #shutter:disabled { opacity: 0.4; cursor: default; }
 .shutterRow {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(max-content, 1fr) auto minmax(52px, 1fr);
+  column-gap: 10px;
   align-items: center;
   width: 100%;
   max-width: 360px;
 }
+.modeSeg { grid-column: 1; justify-self: center; }
 #switchBtn {
   grid-column: 3;
   justify-self: center;
@@ -241,6 +282,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   #shutter.video span { background: ButtonText; border-radius: 50%; width: 30px; height: 30px; }
   #shutter.recording span { background: Highlight; width: 28px; height: 28px; border-radius: 4px; }
   #switchBtn { border-color: ButtonText; color: ButtonText; }
+  .filters button { border-color: ButtonText; }
+  .filters button[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .strength.off { opacity: 1; }
   #timer { color: CanvasText; }
   button:focus-visible { outline-color: Highlight; }
 }
@@ -271,17 +320,41 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 </main>
 
 <div class="controls">
+  <div class="filters" role="group" aria-label="Filter">
+    <button data-filter="none" aria-pressed="true">None</button>
+    <button data-filter="bw" aria-pressed="false">B&amp;W</button>
+    <button data-filter="sepia" aria-pressed="false">Sepia</button>
+    <button data-filter="warm" aria-pressed="false">Warm</button>
+    <button data-filter="cool" aria-pressed="false">Cool</button>
+    <button data-filter="vintage" aria-pressed="false">Vintage</button>
+    <button data-filter="bright" aria-pressed="false">Bright</button>
+    <button data-filter="contrast" aria-pressed="false">Contrast</button>
+    <button data-filter="faded" aria-pressed="false">Faded</button>
+    <button data-filter="vignette" aria-pressed="false">Vignette</button>
+    <button data-filter="comic" aria-pressed="false">Comic</button>
+    <button data-filter="pixel" aria-pressed="false">Pixel</button>
+    <button data-filter="sketch" aria-pressed="false">Sketch</button>
+    <button data-filter="negative" aria-pressed="false">Negative</button>
+    <button data-filter="grain" aria-pressed="false">Grain</button>
+    <button data-filter="vhs" aria-pressed="false">VHS</button>
+    <button data-filter="glitch" aria-pressed="false">Glitch</button>
+  </div>
+  <div class="strength off" id="strengthRow">
+    <label for="strength">Strength</label>
+    <input type="range" id="strength" min="0" max="100" value="100" disabled>
+    <output id="strengthOut" for="strength">100%</output>
+  </div>
   <div class="toggles">
     <div class="seg" role="group" aria-label="Split">
       <button data-split="lr" aria-pressed="true">Left | Right</button>
       <button data-split="tb" aria-pressed="false">Top | Bottom</button>
     </div>
-    <div class="seg" role="group" aria-label="Mode">
+  </div>
+  <div class="shutterRow">
+    <div class="seg modeSeg" role="group" aria-label="Mode">
       <button data-mode="photo" aria-pressed="true">Photo</button>
       <button data-mode="video" aria-pressed="false">Video</button>
     </div>
-  </div>
-  <div class="shutterRow">
     <button id="shutter" aria-label="Take photo" disabled><span></span></button>
     <button id="switchBtn" aria-label="Switch camera" title="Switch camera" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -316,6 +389,78 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   var switchBtn = document.getElementById('switchBtn');
   var facing = 'environment';
   var looping = false;
+
+  var filter = 'none';
+  var strength = 1;
+  var strengthInput = document.getElementById('strength');
+  var strengthOut = document.getElementById('strengthOut');
+  var strengthRow = document.getElementById('strengthRow');
+
+  // Half-size working canvas: the filter is applied to the real half, then mirrored
+  var half = document.createElement('canvas');
+  var hctx = half.getContext('2d', { willReadFrequently: true });
+  var small = document.createElement('canvas');
+  var sctx = small.getContext('2d');
+
+  var PIXEL_FILTERS = { bw: 1, sepia: 1, warm: 1, cool: 1, vintage: 1, bright: 1, contrast: 1, faded: 1, comic: 1, sketch: 1, negative: 1, glitch: 1 };
+  var LUT_FILTERS = {
+    bright: [function (x) { return x * 1.2 + 25; }],
+    contrast: [function (x) { return (x - 128) * 1.6 + 128; }],
+    negative: [function (x) { return 255 - x; }],
+    warm: [function (x) { return x * 1.06 + 18; }, function (x) { return x + 6; }, function (x) { return x * 0.88; }],
+    cool: [function (x) { return x * 0.88; }, function (x) { return x + 4; }, function (x) { return x * 1.06 + 18; }]
+  };
+  // Comic: 4 flat levels per colour, valid for values from -256 to 511
+  var POSTER = new Uint8Array(768);
+  for (var pi = 0; pi < 768; pi++) {
+    var pv = Math.min(255, Math.max(0, pi - 256));
+    POSTER[pi] = Math.round(pv / 85) * 85;
+  }
+  var lutKey = '';
+  var lutR = new Uint8ClampedArray(256), lutG = new Uint8ClampedArray(256), lutB = new Uint8ClampedArray(256);
+
+  function buildLut() {
+    var key = filter + ':' + strength;
+    if (key === lutKey) return;
+    lutKey = key;
+    var fns = LUT_FILTERS[filter];
+    var fr = fns[0], fg = fns[1] || fns[0], fb = fns[2] || fns[0];
+    for (var x = 0; x < 256; x++) {
+      lutR[x] = x + (fr(x) - x) * strength;
+      lutG[x] = x + (fg(x) - x) * strength;
+      lutB[x] = x + (fb(x) - x) * strength;
+    }
+  }
+
+  // Film grain tiles, made once
+  var grainPatterns = [];
+  function makeGrain() {
+    for (var k = 0; k < 4; k++) {
+      var c = document.createElement('canvas');
+      c.width = c.height = 160;
+      var g = c.getContext('2d');
+      var im = g.createImageData(160, 160);
+      for (var i = 0; i < im.data.length; i += 4) {
+        var v = 128 + (Math.random() - 0.5) * 200;
+        im.data[i] = im.data[i + 1] = im.data[i + 2] = v;
+        im.data[i + 3] = 255;
+      }
+      g.putImageData(im, 0, 0);
+      grainPatterns.push(ctx.createPattern(c, 'repeat'));
+    }
+  }
+  makeGrain();
+
+  // VHS scan lines
+  var lineCanvas = document.createElement('canvas');
+  lineCanvas.width = 1; lineCanvas.height = 4;
+  (function () {
+    var g = lineCanvas.getContext('2d');
+    g.fillStyle = 'rgba(0,0,0,0.9)';
+    g.fillRect(0, 2, 1, 2);
+  })();
+  var linePattern = ctx.createPattern(lineCanvas, 'repeat');
+  var frameNo = 0;
 
   var stream = null;
   var split = 'lr';
@@ -434,33 +579,169 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     }
   }
 
+  function processPixels(img, w, h) {
+    var d = img.data, n = d.length, t = strength, i, r, g, b, l;
+    if (LUT_FILTERS[filter]) {
+      buildLut();
+      for (i = 0; i < n; i += 4) { d[i] = lutR[d[i]]; d[i + 1] = lutG[d[i + 1]]; d[i + 2] = lutB[d[i + 2]]; }
+    } else if (filter === 'bw') {
+      for (i = 0; i < n; i += 4) {
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        l = 0.299 * r + 0.587 * g + 0.114 * b;
+        d[i] = r + (l - r) * t; d[i + 1] = g + (l - g) * t; d[i + 2] = b + (l - b) * t;
+      }
+    } else if (filter === 'sepia') {
+      for (i = 0; i < n; i += 4) {
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        d[i] = r + (0.393 * r + 0.769 * g + 0.189 * b - r) * t;
+        d[i + 1] = g + (0.349 * r + 0.686 * g + 0.168 * b - g) * t;
+        d[i + 2] = b + (0.272 * r + 0.534 * g + 0.131 * b - b) * t;
+      }
+    } else if (filter === 'vintage') {
+      for (i = 0; i < n; i += 4) {
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        l = 0.299 * r + 0.587 * g + 0.114 * b;
+        var vr = (r + (l - r) * 0.35) * 0.85 + 40;
+        var vg = (g + (l - g) * 0.35) * 0.8 + 30;
+        var vb = (b + (l - b) * 0.35) * 0.7 + 30;
+        d[i] = r + (vr - r) * t; d[i + 1] = g + (vg - g) * t; d[i + 2] = b + (vb - b) * t;
+      }
+    } else if (filter === 'faded') {
+      for (i = 0; i < n; i += 4) {
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        l = 0.299 * r + 0.587 * g + 0.114 * b;
+        var fr = (r + (l - r) * 0.25 - 128) * 0.72 + 146;
+        var fg = (g + (l - g) * 0.25 - 128) * 0.72 + 146;
+        var fb = (b + (l - b) * 0.25 - 128) * 0.72 + 146;
+        d[i] = r + (fr - r) * t; d[i + 1] = g + (fg - g) * t; d[i + 2] = b + (fb - b) * t;
+      }
+    } else if (filter === 'comic') {
+      for (i = 0; i < n; i += 4) {
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        l = 0.299 * r + 0.587 * g + 0.114 * b;
+        var cr = POSTER[(l + (r - l) * 1.5 + 256) | 0];
+        var cg = POSTER[(l + (g - l) * 1.5 + 256) | 0];
+        var cb = POSTER[(l + (b - l) * 1.5 + 256) | 0];
+        d[i] = r + (cr - r) * t; d[i + 1] = g + (cg - g) * t; d[i + 2] = b + (cb - b) * t;
+      }
+    } else if (filter === 'sketch') {
+      var gray = new Uint8Array(w * h);
+      for (i = 0, l = 0; i < n; i += 4, l++) gray[l] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          var p = y * w + x;
+          var gr = gray[p];
+          var right = x < w - 1 ? gray[p + 1] : gr;
+          var down = y < h - 1 ? gray[p + w] : gr;
+          var edge = Math.abs(gr - right) + Math.abs(gr - down);
+          var sv = 255 - Math.min(255, edge * 4);
+          var q = p * 4;
+          d[q] = d[q] + (sv - d[q]) * t;
+          d[q + 1] = d[q + 1] + (sv - d[q + 1]) * t;
+          d[q + 2] = d[q + 2] + (sv - d[q + 2]) * t;
+        }
+      }
+    } else if (filter === 'glitch') {
+      var src = new Uint8ClampedArray(d);
+      var shift = Math.round(t * 16);
+      var rowOff = new Int16Array(h);
+      if (Math.random() < 0.35) {
+        var bands = 1 + Math.floor(Math.random() * 3);
+        for (var k = 0; k < bands; k++) {
+          var y0 = Math.floor(Math.random() * h);
+          var bh = 4 + Math.floor(Math.random() * 26);
+          var off = Math.round((Math.random() - 0.5) * 80 * t);
+          for (var yy = y0; yy < Math.min(h, y0 + bh); yy++) rowOff[yy] = off;
+        }
+      }
+      for (var y2 = 0; y2 < h; y2++) {
+        var ro = rowOff[y2], base = y2 * w;
+        for (var x2 = 0; x2 < w; x2++) {
+          var sx = x2 + ro;
+          var xr = Math.min(w - 1, Math.max(0, sx + shift));
+          var xg = Math.min(w - 1, Math.max(0, sx));
+          var xb = Math.min(w - 1, Math.max(0, sx - shift));
+          var o = (base + x2) * 4;
+          d[o] = src[(base + xr) * 4];
+          d[o + 1] = src[(base + xg) * 4 + 1];
+          d[o + 2] = src[(base + xb) * 4 + 2];
+        }
+      }
+    }
+  }
+
+  function drawOverlays(w, h) {
+    var t = strength;
+    if (t <= 0) return;
+    if (filter === 'vignette') {
+      var g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.hypot(w, h) / 2);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,' + (0.9 * t) + ')');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    } else if (filter === 'grain') {
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = 0.6 * t;
+      ctx.fillStyle = grainPatterns[frameNo % grainPatterns.length];
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    } else if (filter === 'vhs') {
+      ctx.save();
+      ctx.globalAlpha = 0.45 * t;
+      ctx.fillStyle = linePattern;
+      ctx.fillRect(0, 0, w, h);
+      var bandH = h * 0.12;
+      var y = (performance.now() * 0.06) % (h + bandH * 2) - bandH;
+      var g2 = ctx.createLinearGradient(0, y, 0, y + bandH);
+      g2.addColorStop(0, 'rgba(255,255,255,0)');
+      g2.addColorStop(0.5, 'rgba(255,255,255,' + (0.35 * t) + ')');
+      g2.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = g2;
+      ctx.fillRect(0, y, w, bandH);
+      ctx.restore();
+    }
+  }
+
   function draw() {
     var vw = video.videoWidth, vh = video.videoHeight;
     var w = canvas.width, h = canvas.height;
     if (!vw || !w) return;
-    if (split === 'lr') {
-      var hw = w / 2;
-      var sw = vw / 2;
-      // Left half as the camera sees it
-      ctx.drawImage(video, 0, 0, sw, vh, 0, 0, hw, h);
-      // Right half: the left half mirrored sideways
-      ctx.save();
-      ctx.translate(w, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, sw, vh, 0, 0, hw, h);
-      ctx.restore();
+    frameNo++;
+    var hw, hh, sw, sh;
+    if (split === 'lr') { hw = w / 2; hh = h; sw = vw / 2; sh = vh; }
+    else { hw = w; hh = h / 2; sw = vw; sh = vh / 2; }
+    if (half.width !== hw || half.height !== hh) { half.width = hw; half.height = hh; }
+
+    // 1. Real half from the camera
+    if (filter === 'pixel' && strength > 0) {
+      var block = 1 + Math.round(strength * 29);
+      var smw = Math.max(1, Math.ceil(hw / block)), smh = Math.max(1, Math.ceil(hh / block));
+      if (small.width !== smw || small.height !== smh) { small.width = smw; small.height = smh; }
+      sctx.drawImage(video, 0, 0, sw, sh, 0, 0, smw, smh);
+      hctx.imageSmoothingEnabled = false;
+      hctx.drawImage(small, 0, 0, smw, smh, 0, 0, hw, hh);
+      hctx.imageSmoothingEnabled = true;
     } else {
-      var hh = h / 2;
-      var sh = vh / 2;
-      // Top half as the camera sees it
-      ctx.drawImage(video, 0, 0, vw, sh, 0, 0, w, hh);
-      // Bottom half: the top half mirrored upside down
-      ctx.save();
-      ctx.translate(0, h);
-      ctx.scale(1, -1);
-      ctx.drawImage(video, 0, 0, vw, sh, 0, 0, w, hh);
-      ctx.restore();
+      hctx.drawImage(video, 0, 0, sw, sh, 0, 0, hw, hh);
+      if (PIXEL_FILTERS[filter] && strength > 0) {
+        var img = hctx.getImageData(0, 0, hw, hh);
+        processPixels(img, hw, hh);
+        hctx.putImageData(img, 0, 0);
+      }
     }
+
+    // 2. Real half, then its mirror
+    ctx.drawImage(half, 0, 0);
+    ctx.save();
+    if (split === 'lr') { ctx.translate(w, 0); ctx.scale(-1, 1); }
+    else { ctx.translate(0, h); ctx.scale(1, -1); }
+    ctx.drawImage(half, 0, 0);
+    ctx.restore();
+
+    // 3. Effects that cover the whole picture
+    drawOverlays(w, h);
   }
 
   function loop() {
@@ -615,6 +896,25 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       shutter.classList.toggle('video', mode === 'video');
       shutter.setAttribute('aria-label', mode === 'video' ? 'Start recording' : 'Take photo');
     });
+  });
+
+  function updateStrengthUi() {
+    var off = filter === 'none';
+    strengthInput.disabled = off || !!recorder;
+    strengthRow.classList.toggle('off', off);
+    strengthOut.textContent = strengthInput.value + '%';
+  }
+  document.querySelectorAll('[data-filter]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      filter = b.dataset.filter;
+      setPressed('filter', filter);
+      lutKey = '';
+      updateStrengthUi();
+    });
+  });
+  strengthInput.addEventListener('input', function () {
+    strength = strengthInput.value / 100;
+    updateStrengthUi();
   });
 
   shutter.addEventListener('click', function () {
