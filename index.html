@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mirror Camera</title>
+<style>
+:root {
+  --bg: #e8ecf1;
+  --panel: #f7f9fb;
+  --text: #17202b;
+  --muted: #4d5a69;
+  --line: #b9c3cf;
+  --accent: #1f6f8b;
+  --accent-text: #ffffff;
+  --stage: #0d141c;
+  --stage-text: #e8eef5;
+  --rec: #d32626;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121820;
+    --panel: #1a222c;
+    --text: #e8eef5;
+    --muted: #a3b0be;
+    --line: #34404e;
+    --accent: #5fb6d1;
+    --accent-text: #0b1218;
+    --stage: #05080c;
+    --stage-text: #e8eef5;
+    --rec: #ff5c5c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121820;
+  --panel: #1a222c;
+  --text: #e8eef5;
+  --muted: #a3b0be;
+  --line: #34404e;
+  --accent: #5fb6d1;
+  --accent-text: #0b1218;
+  --stage: #05080c;
+  --stage-text: #e8eef5;
+  --rec: #ff5c5c;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+header {
+  padding: 10px 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+h1 { font-size: 1.15rem; margin: 0; font-weight: 650; letter-spacing: 0.01em; }
+#timer { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--rec); }
+#timer[hidden] { display: none; }
+
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--stage);
+  color: var(--stage-text);
+  overflow: hidden;
+}
+#view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  text-align: center;
+  background: var(--stage);
+  color: var(--stage-text);
+}
+.overlay[hidden] { display: none; }
+.overlay p { margin: 0; max-width: 34ch; line-height: 1.45; }
+#reviewMedia {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#reviewMedia img, #reviewMedia video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.hint { font-size: 0.9rem; color: var(--stage-text); opacity: 0.85; }
+.btnrow { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 10px;
+  min-height: 44px;
+  padding: 8px 18px;
+}
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border: 2px solid var(--accent);
+  font-weight: 600;
+}
+.secondary {
+  background: transparent;
+  color: var(--stage-text);
+  border: 2px solid var(--stage-text);
+}
+
+.controls {
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  padding: 12px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+.seg {
+  display: flex;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 3px;
+  gap: 3px;
+}
+.seg button {
+  background: transparent;
+  color: var(--text);
+  border: 2px solid transparent;
+  min-height: 40px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+.seg button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+#shutter {
+  grid-column: 2;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 4px solid var(--text);
+  background: transparent;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+#shutter span {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: border-radius 0.15s, width 0.15s, height 0.15s;
+}
+#shutter.video span { background: var(--rec); }
+#shutter.recording span { width: 28px; height: 28px; border-radius: 6px; background: var(--rec); }
+#shutter:disabled { opacity: 0.4; cursor: default; }
+.shutterRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+  max-width: 360px;
+}
+#switchBtn {
+  grid-column: 3;
+  justify-self: center;
+  width: 52px;
+  height: 52px;
+  min-height: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  border: 2px solid var(--text);
+  display: grid;
+  place-items: center;
+}
+#switchBtn[hidden] { display: none; }
+#switchBtn:disabled { opacity: 0.4; cursor: default; }
+#switchBtn svg { width: 26px; height: 26px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #shutter span { transition: none; }
+}
+
+/* Windows contrast themes */
+@media (forced-colors: active) {
+  .seg { border-color: CanvasText; }
+  .seg button { border-color: ButtonText; }
+  .seg button[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .primary, .secondary { border-color: ButtonText; }
+  #shutter { forced-color-adjust: none; background: ButtonFace; border-color: ButtonText; }
+  #shutter span { background: ButtonText; }
+  #shutter.video span { background: ButtonText; border-radius: 50%; width: 30px; height: 30px; }
+  #shutter.recording span { background: Highlight; width: 28px; height: 28px; border-radius: 4px; }
+  #switchBtn { border-color: ButtonText; color: ButtonText; }
+  #timer { color: CanvasText; }
+  button:focus-visible { outline-color: Highlight; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mirror Camera</h1>
+  <span id="timer" hidden aria-live="polite">Rec 0:00</span>
+</header>
+
+<main class="stage">
+  <canvas id="view" aria-label="Camera with mirror effect"></canvas>
+
+  <div class="overlay" id="startScreen">
+    <p id="startMsg">Half of the picture is what the camera sees. The other half is its mirror image.</p>
+    <button class="primary" id="startBtn">Start camera</button>
+  </div>
+
+  <div class="overlay" id="review" hidden>
+    <div id="reviewMedia"></div>
+    <p class="hint">On iPhone: tap Save, then choose Save Image or Save Video.</p>
+    <div class="btnrow">
+      <button class="secondary" id="backBtn">Back to camera</button>
+      <button class="primary" id="saveBtn">Save</button>
+    </div>
+  </div>
+</main>
+
+<div class="controls">
+  <div class="toggles">
+    <div class="seg" role="group" aria-label="Split">
+      <button data-split="lr" aria-pressed="true">Left | Right</button>
+      <button data-split="tb" aria-pressed="false">Top | Bottom</button>
+    </div>
+    <div class="seg" role="group" aria-label="Mode">
+      <button data-mode="photo" aria-pressed="true">Photo</button>
+      <button data-mode="video" aria-pressed="false">Video</button>
+    </div>
+  </div>
+  <div class="shutterRow">
+    <button id="shutter" aria-label="Take photo" disabled><span></span></button>
+    <button id="switchBtn" aria-label="Switch camera" title="Switch camera" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 8h3l2-3h8l2 3h3v11H3z"/>
+        <path d="M9 12.5a3.2 3.2 0 0 1 5.6-1.6"/>
+        <path d="M15 10.2v-1.6h-1.6"/>
+        <path d="M15 14a3.2 3.2 0 0 1-5.6 1.6"/>
+        <path d="M9 16.3v1.6h1.6"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var canvas = document.getElementById('view');
+  var ctx = canvas.getContext('2d');
+  var video = document.createElement('video');
+  video.setAttribute('playsinline', '');
+  video.playsInline = true;
+  video.muted = true;
+
+  var startScreen = document.getElementById('startScreen');
+  var startMsg = document.getElementById('startMsg');
+  var startBtn = document.getElementById('startBtn');
+  var review = document.getElementById('review');
+  var reviewMedia = document.getElementById('reviewMedia');
+  var saveBtn = document.getElementById('saveBtn');
+  var backBtn = document.getElementById('backBtn');
+  var shutter = document.getElementById('shutter');
+  var timer = document.getElementById('timer');
+  var switchBtn = document.getElementById('switchBtn');
+  var facing = 'environment';
+  var looping = false;
+
+  var stream = null;
+  var split = 'lr';
+  var mode = 'photo';
+  var recorder = null;
+  var chunks = [];
+  var recStart = 0;
+  var timerId = 0;
+  var captured = null;
+  var MAX_SIDE = 1280;
+
+  function showStartMessage(text, buttonText) {
+    startMsg.textContent = text;
+    startBtn.textContent = buttonText || 'Try again';
+    startScreen.hidden = false;
+  }
+
+  function errorText(err) {
+    var name = err && err.name;
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return 'Camera access was blocked. Allow the camera for this site in your browser settings, then try again. If you opened this link inside another app, open it in Safari or Chrome instead.';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      return 'No camera was found on this device.';
+    }
+    if (name === 'NotReadableError') {
+      return 'The camera is in use by another app. Close that app and try again.';
+    }
+    return 'The camera could not start. Open this page in Safari or Chrome and try again.';
+  }
+
+  async function getStream(videoOpts) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: videoOpts, audio: true });
+    } catch (e) {
+      // Microphone refused or missing: continue with camera only
+      return await navigator.mediaDevices.getUserMedia({ video: videoOpts, audio: false });
+    }
+  }
+
+  async function openStream() {
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    stream = null;
+    var size = { width: { ideal: 1280 }, height: { ideal: 720 } };
+    var s;
+    try {
+      s = await getStream(Object.assign({ facingMode: { exact: facing } }, size));
+    } catch (e) {
+      s = await getStream(Object.assign({ facingMode: facing }, size));
+    }
+    stream = s;
+    video.srcObject = s;
+    await video.play();
+  }
+
+  async function checkCameras() {
+    try {
+      var devices = await navigator.mediaDevices.enumerateDevices();
+      var count = devices.filter(function (d) { return d.kind === 'videoinput'; }).length;
+      switchBtn.hidden = count < 2;
+    } catch (e) {
+      switchBtn.hidden = true;
+    }
+  }
+
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showStartMessage('This browser cannot open the camera. Open the page in Safari or Chrome.');
+      return;
+    }
+    startBtn.disabled = true;
+    try {
+      await openStream();
+      fitCanvas();
+      startScreen.hidden = true;
+      shutter.disabled = false;
+      checkCameras();
+      if (!looping) { looping = true; requestAnimationFrame(loop); }
+    } catch (err) {
+      showStartMessage(errorText(err));
+    } finally {
+      startBtn.disabled = false;
+    }
+  }
+
+  async function switchCamera() {
+    if (recorder || !stream) return;
+    var previous = facing;
+    facing = facing === 'environment' ? 'user' : 'environment';
+    switchBtn.disabled = true;
+    shutter.disabled = true;
+    try {
+      await openStream();
+    } catch (err) {
+      facing = previous;
+      try {
+        await openStream();
+      } catch (err2) {
+        showStartMessage(errorText(err2));
+      }
+    } finally {
+      switchBtn.disabled = false;
+      shutter.disabled = !stream;
+    }
+  }
+
+  function fitCanvas() {
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return;
+    var s = Math.min(1, MAX_SIDE / Math.max(vw, vh));
+    var w = Math.round(vw * s / 2) * 2;
+    var h = Math.round(vh * s / 2) * 2;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+  }
+
+  function draw() {
+    var vw = video.videoWidth, vh = video.videoHeight;
+    var w = canvas.width, h = canvas.height;
+    if (!vw || !w) return;
+    if (split === 'lr') {
+      var hw = w / 2;
+      var sw = vw / 2;
+      // Left half as the camera sees it
+      ctx.drawImage(video, 0, 0, sw, vh, 0, 0, hw, h);
+      // Right half: the left half mirrored sideways
+      ctx.save();
+      ctx.translate(w, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, sw, vh, 0, 0, hw, h);
+      ctx.restore();
+    } else {
+      var hh = h / 2;
+      var sh = vh / 2;
+      // Top half as the camera sees it
+      ctx.drawImage(video, 0, 0, vw, sh, 0, 0, w, hh);
+      // Bottom half: the top half mirrored upside down
+      ctx.save();
+      ctx.translate(0, h);
+      ctx.scale(1, -1);
+      ctx.drawImage(video, 0, 0, vw, sh, 0, 0, w, hh);
+      ctx.restore();
+    }
+  }
+
+  function loop() {
+    if (stream && video.videoWidth) {
+      if (!recorder) fitCanvas();
+      draw();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function stamp() {
+    var d = new Date();
+    function p(n) { return String(n).padStart(2, '0'); }
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+
+  function showReview(blob, type, ext) {
+    var url = URL.createObjectURL(blob);
+    captured = { blob: blob, type: type, name: 'mirror-' + stamp() + '.' + ext, url: url };
+    reviewMedia.innerHTML = '';
+    var el;
+    if (type.indexOf('image') === 0) {
+      el = document.createElement('img');
+      el.alt = 'Your mirrored photo';
+    } else {
+      el = document.createElement('video');
+      el.controls = true;
+      el.playsInline = true;
+      el.setAttribute('playsinline', '');
+    }
+    el.src = url;
+    reviewMedia.appendChild(el);
+    review.hidden = false;
+  }
+
+  function closeReview() {
+    review.hidden = true;
+    reviewMedia.innerHTML = '';
+    if (captured) URL.revokeObjectURL(captured.url);
+    captured = null;
+  }
+
+  function takePhoto() {
+    canvas.toBlob(function (blob) {
+      if (blob) showReview(blob, 'image/jpeg', 'jpg');
+    }, 'image/jpeg', 0.92);
+  }
+
+  function pickVideoType() {
+    var types = ['video/mp4;codecs=avc1,mp4a', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    for (var i = 0; i < types.length; i++) {
+      if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(types[i])) return types[i];
+    }
+    return '';
+  }
+
+  function updateTimer() {
+    var s = Math.floor((Date.now() - recStart) / 1000);
+    timer.textContent = 'Rec ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  function startRecording() {
+    if (typeof MediaRecorder === 'undefined' || !canvas.captureStream) {
+      alert('This browser cannot record video. Try Photo mode, or update your browser.');
+      return;
+    }
+    var canvasStream = canvas.captureStream(30);
+    var tracks = canvasStream.getVideoTracks().concat(stream.getAudioTracks());
+    var mixed = new MediaStream(tracks);
+    var mime = pickVideoType();
+    try {
+      recorder = mime ? new MediaRecorder(mixed, { mimeType: mime }) : new MediaRecorder(mixed);
+    } catch (e) {
+      recorder = null;
+      alert('Video recording could not start on this device.');
+      return;
+    }
+    chunks = [];
+    recorder.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = function () {
+      var fullType = (recorder && recorder.mimeType) || mime || 'video/webm';
+      var type = fullType.split(';')[0];
+      var ext = type.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+      var blob = new Blob(chunks, { type: type });
+      recorder = null;
+      canvasStream.getTracks().forEach(function (t) { t.stop(); });
+      showReview(blob, type, ext);
+    };
+    recorder.start(1000);
+    recStart = Date.now();
+    updateTimer();
+    timer.hidden = false;
+    timerId = setInterval(updateTimer, 500);
+    shutter.classList.add('recording');
+    shutter.setAttribute('aria-label', 'Stop recording');
+    setTogglesDisabled(true);
+  }
+
+  function stopRecording() {
+    clearInterval(timerId);
+    timer.hidden = true;
+    shutter.classList.remove('recording');
+    shutter.setAttribute('aria-label', 'Start recording');
+    setTogglesDisabled(false);
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+  }
+
+  function setTogglesDisabled(off) {
+    document.querySelectorAll('.seg button').forEach(function (b) { b.disabled = off; });
+    switchBtn.disabled = off;
+  }
+
+  function download() {
+    var a = document.createElement('a');
+    a.href = captured.url;
+    a.download = captured.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  async function save() {
+    if (!captured) return;
+    var file = new File([captured.blob], captured.name, { type: captured.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+      } catch (e) {
+        if (e.name !== 'AbortError') download();
+      }
+    } else {
+      download();
+    }
+  }
+
+  function setPressed(groupAttr, value) {
+    document.querySelectorAll('[data-' + groupAttr + ']').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset[groupAttr] === value));
+    });
+  }
+
+  document.querySelectorAll('[data-split]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      split = b.dataset.split;
+      setPressed('split', split);
+    });
+  });
+  document.querySelectorAll('[data-mode]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      mode = b.dataset.mode;
+      setPressed('mode', mode);
+      shutter.classList.toggle('video', mode === 'video');
+      shutter.setAttribute('aria-label', mode === 'video' ? 'Start recording' : 'Take photo');
+    });
+  });
+
+  shutter.addEventListener('click', function () {
+    if (!stream || !review.hidden) return;
+    if (mode === 'photo') takePhoto();
+    else if (recorder) stopRecording();
+    else startRecording();
+  });
+  startBtn.addEventListener('click', startCamera);
+  switchBtn.addEventListener('click', switchCamera);
+  saveBtn.addEventListener('click', save);
+  backBtn.addEventListener('click', closeReview);
+})();
+</script>
+</body>
+</html>
