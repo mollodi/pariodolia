@@ -61,9 +61,9 @@ body {
   overflow-y: auto;
 }
 header {
-  padding: 8px 16px;
+  padding: 6px 12px 6px 16px;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -173,18 +173,61 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   border-color: var(--accent);
   font-weight: 600;
 }
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.panel[hidden] { display: none; }
+.panel {
+  max-height: 42vh;
+  max-height: 42dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 0;
+}
+.sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-width: 380px;
+}
+.sliders:empty { display: none; }
 .strength {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  max-width: 360px;
   font-size: 0.9rem;
 }
-.strength label { white-space: nowrap; }
+.strength label { width: 5.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .strength input { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); height: 30px; }
 .strength output { width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
-.strength.off { opacity: 0.45; }
+.hintSmall { margin: 0; font-size: 0.8rem; color: var(--muted); text-align: center; }
+.headRight { display: flex; align-items: center; gap: 12px; }
+#panelBtn {
+  min-height: 36px;
+  padding: 4px 12px;
+  border-radius: 18px;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#panelBtn[aria-expanded="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+#panelBtn svg { width: 14px; height: 14px; transition: transform 0.15s; }
+#panelBtn[aria-expanded="true"] svg { transform: rotate(180deg); }
 .toggles {
   display: flex;
   flex-wrap: wrap;
@@ -263,7 +306,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 #switchBtn svg { width: 26px; height: 26px; }
 
 @media (prefers-reduced-motion: reduce) {
-  #shutter span { transition: none; }
+  #shutter span, #panelBtn svg { transition: none; }
 }
 
 /* Windows contrast themes */
@@ -289,7 +332,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     color: HighlightText;
     border-color: Highlight;
   }
-  .strength.off { opacity: 1; }
+  #panelBtn { border-color: ButtonText; }
+  #panelBtn[aria-expanded="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .hintSmall { color: CanvasText; }
   #timer { color: CanvasText; }
   button:focus-visible { outline-color: Highlight; }
 }
@@ -298,7 +348,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 <body>
 <header>
   <h1>Mirror Camera</h1>
-  <span id="timer" hidden aria-live="polite">Rec 0:00</span>
+  <div class="headRight">
+    <span id="timer" hidden aria-live="polite">Rec 0:00</span>
+    <button id="panelBtn" aria-expanded="true" aria-controls="panel">Effects
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5l4 4 4-4"/></svg>
+    </button>
+  </div>
 </header>
 
 <main class="stage">
@@ -320,7 +375,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 </main>
 
 <div class="controls">
-  <div class="filters" role="group" aria-label="Filter">
+  <div class="panel" id="panel">
+  <p class="hintSmall">Tap several effects to mix them.</p>
+  <div class="filters" role="group" aria-label="Effects">
     <button data-filter="none" aria-pressed="true">None</button>
     <button data-filter="bw" aria-pressed="false">B&amp;W</button>
     <button data-filter="sepia" aria-pressed="false">Sepia</button>
@@ -339,16 +396,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     <button data-filter="vhs" aria-pressed="false">VHS</button>
     <button data-filter="glitch" aria-pressed="false">Glitch</button>
   </div>
-  <div class="strength off" id="strengthRow">
-    <label for="strength">Strength</label>
-    <input type="range" id="strength" min="0" max="100" value="100" disabled>
-    <output id="strengthOut" for="strength">100%</output>
-  </div>
+  <div class="sliders" id="sliders"></div>
   <div class="toggles">
     <div class="seg" role="group" aria-label="Split">
       <button data-split="lr" aria-pressed="true">Left | Right</button>
       <button data-split="tb" aria-pressed="false">Top | Bottom</button>
     </div>
+  </div>
   </div>
   <div class="shutterRow">
     <div class="seg modeSeg" role="group" aria-label="Mode">
@@ -390,11 +444,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   var facing = 'environment';
   var looping = false;
 
-  var filter = 'none';
-  var strength = 1;
-  var strengthInput = document.getElementById('strength');
-  var strengthOut = document.getElementById('strengthOut');
-  var strengthRow = document.getElementById('strengthRow');
+  // Active effects in the order they were chosen: [{ id, t }]
+  var active = [];
+  var slidersBox = document.getElementById('sliders');
+  var panel = document.getElementById('panel');
+  var panelBtn = document.getElementById('panelBtn');
 
   // Half-size working canvas: the filter is applied to the real half, then mirrored
   var half = document.createElement('canvas');
@@ -416,20 +470,20 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var pv = Math.min(255, Math.max(0, pi - 256));
     POSTER[pi] = Math.round(pv / 85) * 85;
   }
-  var lutKey = '';
-  var lutR = new Uint8ClampedArray(256), lutG = new Uint8ClampedArray(256), lutB = new Uint8ClampedArray(256);
+  var luts = {};
 
-  function buildLut() {
-    var key = filter + ':' + strength;
-    if (key === lutKey) return;
-    lutKey = key;
-    var fns = LUT_FILTERS[filter];
+  function getLut(f, t) {
+    var c = luts[f];
+    if (c && c.t === t) return c;
+    c = luts[f] = { t: t, r: new Uint8ClampedArray(256), g: new Uint8ClampedArray(256), b: new Uint8ClampedArray(256) };
+    var fns = LUT_FILTERS[f];
     var fr = fns[0], fg = fns[1] || fns[0], fb = fns[2] || fns[0];
     for (var x = 0; x < 256; x++) {
-      lutR[x] = x + (fr(x) - x) * strength;
-      lutG[x] = x + (fg(x) - x) * strength;
-      lutB[x] = x + (fb(x) - x) * strength;
+      c.r[x] = x + (fr(x) - x) * t;
+      c.g[x] = x + (fg(x) - x) * t;
+      c.b[x] = x + (fb(x) - x) * t;
     }
+    return c;
   }
 
   // Film grain tiles, made once
@@ -579,10 +633,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     }
   }
 
-  function processPixels(img, w, h) {
-    var d = img.data, n = d.length, t = strength, i, r, g, b, l;
+  function processPixels(img, w, h, filter, t) {
+    var d = img.data, n = d.length, i, r, g, b, l;
     if (LUT_FILTERS[filter]) {
-      buildLut();
+      var lt = getLut(filter, t), lutR = lt.r, lutG = lt.g, lutB = lt.b;
       for (i = 0; i < n; i += 4) { d[i] = lutR[d[i]]; d[i + 1] = lutG[d[i + 1]]; d[i + 2] = lutB[d[i + 2]]; }
     } else if (filter === 'bw') {
       for (i = 0; i < n; i += 4) {
@@ -670,8 +724,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     }
   }
 
-  function drawOverlays(w, h) {
-    var t = strength;
+  function drawOverlay(w, h, filter, t) {
     if (t <= 0) return;
     if (filter === 'vignette') {
       var g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.hypot(w, h) / 2);
@@ -715,8 +768,16 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (half.width !== hw || half.height !== hh) { half.width = hw; half.height = hh; }
 
     // 1. Real half from the camera
-    if (filter === 'pixel' && strength > 0) {
-      var block = 1 + Math.round(strength * 29);
+    var pix = null, pixelList = [], overlayList = [];
+    for (var a = 0; a < active.length; a++) {
+      var e = active[a];
+      if (e.t <= 0) continue;
+      if (e.id === 'pixel') pix = e;
+      else if (PIXEL_FILTERS[e.id]) pixelList.push(e);
+      else overlayList.push(e);
+    }
+    if (pix) {
+      var block = 1 + Math.round(pix.t * 29);
       var smw = Math.max(1, Math.ceil(hw / block)), smh = Math.max(1, Math.ceil(hh / block));
       if (small.width !== smw || small.height !== smh) { small.width = smw; small.height = smh; }
       sctx.drawImage(video, 0, 0, sw, sh, 0, 0, smw, smh);
@@ -725,11 +786,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       hctx.imageSmoothingEnabled = true;
     } else {
       hctx.drawImage(video, 0, 0, sw, sh, 0, 0, hw, hh);
-      if (PIXEL_FILTERS[filter] && strength > 0) {
-        var img = hctx.getImageData(0, 0, hw, hh);
-        processPixels(img, hw, hh);
-        hctx.putImageData(img, 0, 0);
-      }
+    }
+    if (pixelList.length) {
+      var img = hctx.getImageData(0, 0, hw, hh);
+      for (var k = 0; k < pixelList.length; k++) processPixels(img, hw, hh, pixelList[k].id, pixelList[k].t);
+      hctx.putImageData(img, 0, 0);
     }
 
     // 2. Real half, then its mirror
@@ -741,7 +802,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     ctx.restore();
 
     // 3. Effects that cover the whole picture
-    drawOverlays(w, h);
+    for (var m = 0; m < overlayList.length; m++) drawOverlay(w, h, overlayList[m].id, overlayList[m].t);
   }
 
   function loop() {
@@ -898,23 +959,57 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     });
   });
 
-  function updateStrengthUi() {
-    var off = filter === 'none';
-    strengthInput.disabled = off || !!recorder;
-    strengthRow.classList.toggle('off', off);
-    strengthOut.textContent = strengthInput.value + '%';
+  var NAMES = {};
+  document.querySelectorAll('[data-filter]').forEach(function (b) { NAMES[b.dataset.filter] = b.textContent; });
+
+  function refreshEffects() {
+    document.querySelectorAll('[data-filter]').forEach(function (b) {
+      var id = b.dataset.filter;
+      var on = id === 'none' ? active.length === 0 : active.some(function (e) { return e.id === id; });
+      b.setAttribute('aria-pressed', String(on));
+    });
+    slidersBox.innerHTML = '';
+    active.forEach(function (e) {
+      var row = document.createElement('div');
+      row.className = 'strength';
+      var inputId = 'str-' + e.id;
+      var lab = document.createElement('label');
+      lab.htmlFor = inputId;
+      lab.textContent = NAMES[e.id];
+      var inp = document.createElement('input');
+      inp.type = 'range'; inp.min = 0; inp.max = 100; inp.id = inputId;
+      inp.value = Math.round(e.t * 100);
+      inp.setAttribute('aria-label', NAMES[e.id] + ' strength');
+      var out = document.createElement('output');
+      out.htmlFor = inputId;
+      out.textContent = inp.value + '%';
+      inp.addEventListener('input', function () {
+        e.t = inp.value / 100;
+        out.textContent = inp.value + '%';
+      });
+      row.appendChild(lab); row.appendChild(inp); row.appendChild(out);
+      slidersBox.appendChild(row);
+    });
   }
+
   document.querySelectorAll('[data-filter]').forEach(function (b) {
     b.addEventListener('click', function () {
-      filter = b.dataset.filter;
-      setPressed('filter', filter);
-      lutKey = '';
-      updateStrengthUi();
+      var id = b.dataset.filter;
+      if (id === 'none') {
+        active = [];
+      } else {
+        var idx = active.findIndex(function (e) { return e.id === id; });
+        if (idx >= 0) active.splice(idx, 1);
+        else active.push({ id: id, t: 1 });
+      }
+      refreshEffects();
     });
   });
-  strengthInput.addEventListener('input', function () {
-    strength = strengthInput.value / 100;
-    updateStrengthUi();
+
+  panelBtn.addEventListener('click', function () {
+    var open = panelBtn.getAttribute('aria-expanded') !== 'true';
+    panelBtn.setAttribute('aria-expanded', String(open));
+    panel.hidden = !open;
   });
 
   shutter.addEventListener('click', function () {
